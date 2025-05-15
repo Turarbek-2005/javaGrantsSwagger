@@ -1,16 +1,24 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { StudentsResponse } from "../types";
 
 interface Props {
-  data: StudentsResponse;
+  data: StudentsResponse; // теперь допускаем, что data может быть undefined
 }
 
 const StudentTabs: React.FC<Props> = ({ data }) => {
-  const entries = Object.entries(data.faculties) as [
-    string,
-    { fio: string; someCode: string; sumPoints: number }[]
-  ][];
+  const [entries, setEntries] = useState<
+    [string, { fio: string; someCode: string; sumPoints: number }[]][]
+  >([]);
 
+  useEffect(() => {
+    if (data?.faculties) {
+      const newEntries = Object.entries(data.faculties) as [
+        string,
+        { fio: string; someCode: string; sumPoints: number }[]
+      ][];
+      setEntries(newEntries);
+    }
+  }, [data]);
   return (
     <div>
       <p className="text-sm mb-4">Всего студентов: {data.count}</p>

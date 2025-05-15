@@ -6,10 +6,40 @@ import {
   getFaculties,
   deleteAllStudents,
 } from "../api/studentApi";
-import { StudentsResponse } from "../types";
+import { StudentRecord, StudentsResponse } from "../types";
 
 interface Props {
   onData: (data: StudentsResponse) => void;
+}
+
+// Тип записи студента из API (расширяет локальный StudentRecord)
+interface ApiStudent extends StudentRecord {
+  id: number;
+  faculty: string;
+}
+
+// Функция группировки массива ApiStudent по факультетам
+function groupByFaculty(students: ApiStudent[]): StudentsResponse {
+  const faculties: StudentsResponse["faculties"] = {};
+
+  students.forEach((s) => {
+    if (!faculties[s.faculty]) {
+      faculties[s.faculty] = [];
+    }
+    // В StudentsResponse хранятся только поля StudentRecord
+    faculties[s.faculty].push({
+      id:s.id,
+      faculty:s.faculty,
+      fio: s.fio,
+      someCode: s.someCode,
+      sumPoints: s.sumPoints,
+    });
+  });
+
+  return {
+    count: students.length,
+    faculties,
+  };
 }
 
 export const Controls: React.FC<Props> = ({ onData }) => {
@@ -17,19 +47,22 @@ export const Controls: React.FC<Props> = ({ onData }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+    // Загрузка всех студентов
   const fetchAll = async () => {
     setError("");
     setLoading(true);
     try {
-      const res = await getAllStudents();
+      // getAllStudents возвращает сразу StudentsResponse
+      const res = await getAllStudents(); // res: StudentsResponse
       onData(res);
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || "Ошибка загрузки данных");
     } finally {
       setLoading(false);
     }
   };
 
+  // Поиск студентов по строке q
   const handleSearch = async () => {
     if (!q.trim()) {
       setError("Пожалуйста, введите строку для поиска");
@@ -38,41 +71,41 @@ export const Controls: React.FC<Props> = ({ onData }) => {
     setError("");
     setLoading(true);
     try {
-      console.log(q);
-      const res = await searchStudents(q);
-      onData(res);
+      const rawData = (await searchStudents(q)) as unknown as ApiStudent[];
+      const grouped = groupByFaculty(rawData);
+      onData(grouped);
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || "Ошибка поиска");
     } finally {
       setLoading(false);
     }
   };
 
+  // Получить список факультетов (для логирования)
   const fetchFaculties = async () => {
     setError("");
     setLoading(true);
     try {
       const list = await getFaculties();
-      // Если вам нужно что‑то делать со списком факультетов, добавьте callback,
-      // сейчас просто логируем:
       console.log("Faculties:", list);
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || "Ошибка получения факультетов");
     } finally {
       setLoading(false);
     }
   };
 
+  // Удалить всех студентов
   const handleDelete = async () => {
     setError("");
     setLoading(true);
     try {
       await deleteAllStudents();
-      onData({ count: 0, faculties: {} }); // корректный тип
+      onData({ count: 0, faculties: {} });
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || "Ошибка при удалении");
     } finally {
-      setLoading(false); // гарантированно отключим лоадер
+      setLoading(false);
     }
   };
 
